@@ -1,18 +1,15 @@
-# Use an official JDK 21 base image
-FROM eclipse-temurin:21-jdk-alpine
-
-# Set working directory
+# Build stage
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
-
-# Copy build tool files (Maven or Gradle)
 COPY . .
+# Make mvnw executable
+RUN chmod +x mvnw
+# Build the application
+RUN ./mvnw clean package -DskipTests
 
-# Build the application (adjust for Maven or Gradle)
-RUN ./mvnw clean package -DskipTests  # For Maven
-# RUN ./gradlew build -x test  # For Gradle, uncomment if using Gradle
-
-# Expose the port (Render sets PORT dynamically)
+# Run stage
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE $PORT
-
-# Run the JAR file (adjust the JAR name as per your project)
-CMD ["java", "-jar", "target/food-lens-backend-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "app.jar"]
