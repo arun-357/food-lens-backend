@@ -65,13 +65,13 @@ public class SecurityConfig {
         if (origins.contains("*")) {
             configuration.setAllowedOriginPatterns(List.of("*"));
         } else {
-            // Supports exact origins. For wildcard subdomains use patterns like https://*.vercel.app
-            configuration.setAllowedOriginPatterns(origins);
+            configuration.setAllowedOrigins(origins);
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(corsAllowCredentials);
+        configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
