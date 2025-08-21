@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -38,7 +39,12 @@ public class FoodService {
     public Food searchFood(String name, String username) {
         Optional<Food> cached = foodRepository.findByNameIgnoreCase(name);
         if (cached.isPresent()) {
-            return cached.get();
+            Food food = cached.get();
+            if (food.getImageUrl() == null || food.getImageUrlExpiresAt() == null || food.getImageUrlExpiresAt().isBefore(LocalDateTime.now())) {
+                refreshImage(food);
+                foodRepository.save(food);
+            }
+            return food;
         }
 
         // Check limits
@@ -79,21 +85,10 @@ public class FoodService {
             food.setIngredients(String.join(", ", foodResponse.getIngredients()));
             food.setBenefits(String.join(", ", foodResponse.getBenefits()));
 
-            // Pixabay API
-            RestTemplate rest = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            String pixabayUrl = "https://pixabay.com/api/?key=" + pixabayKey + "&q=" + name + "&lang=en&safesearch=true&per_page=3&category=food";
-            String imageResponse = rest.exchange(pixabayUrl, HttpMethod.GET, entity, String.class).getBody();
-            ObjectMapper mapper1 = new ObjectMapper();
-            JsonNode json = mapper1.readTree(imageResponse);
-            JsonNode hits = json.get("hits");
-            if (hits.size() > 0) {
-                food.setImageUrl(hits.get(0).get("webformatURL").asText());
-            } else {
-                food.setImageUrl(null);
-            }
+            refreshImage(food);
             foodRepository.save(food);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("API failure. Demo limit exhausted.");
         }
@@ -102,6 +97,29 @@ public class FoodService {
         updateUsage(user);
 
         return food;
+    }
+
+    private void refreshImage(Food food) {
+        RestTemplate rest = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        String pixabayUrl = "https://pixabay.com/api/?key=" + pixabayKey + "&q=" + food.getName() + "&lang=en&safesearch=true&per_page=3&category=food";
+        String imageResponse = rest.exchange(pixabayUrl, HttpMethod.GET, entity, String.class).getBody();
+        try {
+            ObjectMapper mapper1 = new ObjectMapper();
+            JsonNode json = mapper1.readTree(imageResponse);
+            JsonNode hits = json.get("hits");
+            if (hits != null && hits.size() > 0) {
+                food.setImageUrl(hits.get(0).get("webformatURL").asText());
+            } else {
+                food.setImageUrl(null);
+            }
+            // set expiration to 24 hours from now
+            food.setImageUrlExpiresAt(LocalDateTime.now().plusHours(24));
+        } catch (Exception e) {
+            food.setImageUrl(null);
+            food.setImageUrlExpiresAt(null);
+        }
     }
 
     private boolean checkDailyLimit(User user) {
