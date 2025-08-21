@@ -61,7 +61,7 @@ public class FoodService {
         food.setName(name);
         try {
             Client client = Client.builder().apiKey(geminiKey).build();
-            String prompt = "Is \"" + name + "\" a food dish? Answer only in JSON with keys: isFood (true/false), info (short description), ingredients (list), benefits (list). Keep response concise.";
+            String prompt = "Is \"" + name + "\" a food dish or edible? Answer only in JSON with keys: isFood (true/false), info (short description), ingredients (list), benefits (list). Keep response concise.";
             GenerateContentResponse response = client.models.generateContent(
                     "gemini-2.5-flash",
                     prompt,
