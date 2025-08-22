@@ -22,6 +22,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Service
 public class FoodService {
@@ -35,6 +38,18 @@ public class FoodService {
     private String geminiKey;
     @Value("${pixabay.api.key}")
     private String pixabayKey;
+
+    @Value("${unlimited.emails}")
+    private String unlimitedEmailsRaw;
+
+    private Set<String> getUnlimitedEmails() {
+        if (unlimitedEmailsRaw == null || unlimitedEmailsRaw.isBlank()) return Set.of();
+        return Arrays.stream(unlimitedEmailsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+    }
 
     public Food searchFood(String name, String username) {
         Optional<Food> cached = foodRepository.findByNameIgnoreCase(name);
@@ -123,6 +138,12 @@ public class FoodService {
     }
 
     private boolean checkDailyLimit(User user) {
+        // Bypass limit for whitelisted emails from env
+        String email = user.getEmail();
+        if (email != null && getUnlimitedEmails().contains(email.toLowerCase())) {
+            return true;
+        }
+
         LocalDate today = LocalDate.now();
         UserUsage usage = userUsageRepository.findByUserAndDate(user, today)
                 .orElse(null);
