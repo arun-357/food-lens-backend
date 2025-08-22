@@ -5,6 +5,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import lombok.Data;
 import java.time.LocalDateTime;
+import jakarta.persistence.Column;
 
 @Entity
 @Data
@@ -13,11 +14,16 @@ public class Food {
     @GeneratedValue
     private Long id;
     private String name;
+    @Column(columnDefinition = "TEXT")
     private String description;
+    @Column(columnDefinition = "TEXT")
     private String ingredients;
+    @Column(columnDefinition = "TEXT")
     private String benefits;
+    // Allow longer URLs
+    @Column(length = 1024)
     private String imageUrl;
-    // imageUrl (valid for 24 hours)
+    // (valid for 24 hours)
     private LocalDateTime imageUrlExpiresAt;
     private boolean isFood;
 
